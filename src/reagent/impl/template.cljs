@@ -198,16 +198,43 @@
   (let [[tag props] v
         hasmap (map? props)
         first-child (if (or hasmap (nil? props)) 2 1)
+        children (if (> (count v) first-child)
+                   (subvec v first-child))
         c (as-class tag)
-        jsprops (js-obj cljs-props    (if hasmap props)
-                        cljs-children (if (> (count v) first-child)
-                                        (subvec v first-child))
-                        cljs-level    level)]
+        __html (when (:as-html (meta v)) (apply str children))
+        jsprops
+        (js-obj cljs-props
+                (cond
+                 (and hasmap __html)
+                 (assoc props :dangerouslySetInnerHTML {:__html __html})
+
+                 hasmap props
+                 __html {:dangerouslySetInnerHTML {:__html __html}})
+
+                cljs-children (when-not __html children)
+                cljs-level    level)]
     (when hasmap
       (let [key (:key props)]
         (when-not (nil? key)
           (aset jsprops "key" key))))
     (c jsprops)))
+
+(comment
+ (defn vec-to-comp [v level]
+   (assert (pos? (count v)))
+   (let [[tag props] v
+         hasmap (map? props)
+         first-child (if (or hasmap (nil? props)) 2 1)
+         c (as-class tag)
+         jsprops (js-obj cljs-props    (if hasmap props)
+                         cljs-children (if (> (count v) first-child)
+                                         (subvec v first-child))
+                         cljs-level    level)]
+     (when hasmap
+       (let [key (:key props)]
+         (when-not (nil? key)
+           (aset jsprops "key" key))))
+     (c jsprops))))
 
 (defn as-component
   ([x] (as-component x 0))
